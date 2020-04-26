@@ -1,12 +1,23 @@
-## 漫谈Guava之RateLimiter
+---
+title: 漫谈Guava之RateLimiter
+date: 2020-04-24 15:40:24
+tags:
+- Guava
+- limiter
+categories: Java
 
-![](http://img.yjll.art/img/20200327141404.jpg)
+
+---
+
+![](https://img.yjll.art/img/20200327141404.jpg)
 
 
 
 ​	日常开发中经常会出现一瞬间接口被超频次访问的这种情况，例如电商秒杀活动，定点抢红包等。短时间高并发可能会拖慢系统的响应速度，引起网络超时，一个服务不可用进而影响其他服务也不可用，甚至导致雪崩。
 
 ​	限流是最直接有效的控制手段，将系统处理不过来的请求拦截在核心逻辑之外。限流器实现方法有`漏桶算法(Leaky Bucket),`令牌桶算法(Token Bucket)`等。
+
+<!-- more -->
 
 * 漏斗算法 理解起来比较简单，水(即请求)流入固定大小的漏斗内，漏斗也已一定的速度流出水，当水满时停止流入,进行限流。
 * 令牌桶算法 同样是固定大小的桶，定期往桶中投令牌，有新请求时需从桶中取令牌，当桶中无令牌可取时，则拒绝。
@@ -60,7 +71,7 @@ public class GuavaLimiterDemo {
 
 
 
-![](http://img.yjll.art/img/20200327141557.png)
+![](https://img.yjll.art/img/20200327141557.png)
 
 
 ​	RateLimiter限流器实现了两种算法`SmoothWarmingUp(漏斗算法)`和`SmoothBursty(令牌桶算法)`，默认使用`SmoothBursty`。
