@@ -34,7 +34,7 @@ Let’s Encrypt 是 一个叫 ISRG （ Internet Security Research Group ，互�
 
 我们先安装Certbot,我是用的是CentOS7，就直接使用yum安装啦。
 
-```shell
+```
 yum install python2-certbot-nginx
 ```
 
@@ -64,32 +64,38 @@ yum install python2-certbot-nginx
 
 ```
 
+为了原来的http连接也可以正常使用，我们可以通过Nginx将http请求重定向到现在的端口上
+
+```
+    server {
+    listen       80;
+    rewrite ^(.*) https://$host$1 permanent;
+    }
+```
+
+好了，可以在浏览器访问HTTP和HTTPS链接试一试了。
+
 
 
 ### 自动续期
 
 使用起来确实挺方便的，但是Let’s Encrypt发布的证书期限只有三个月，在证书到期前我们要重新申请证书，`certbot`也提供了续订的功能
 
-```shell
+```
 certbot renew
 ```
 
 也就是说在证书过期前要运行一下上边的命令，并且重新加载nginx的配置文件，这部分我们可以配置在定时任务中。
 
-```shell
+```
 45 4 1 * * certbot renew --force-renew --renew-hook "nginx -s reload"
 ```
 
 每一个月第一天，重新申请证书
 
-好了，可以在浏览器访问你的域名试一试了。
 
 ### 参考资料
 
 https://certbot.eff.org/
 
 https://learnku.com/articles/19999
-
-
-
-
