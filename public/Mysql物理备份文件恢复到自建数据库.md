@@ -13,6 +13,7 @@ categories: Linux
 阿里云提供了定期备份数据库的功能，可以在阿里云的控制台将数据库恢复到备份点，那我们想将这部分数据导入到我们自建的数据库怎么操作呢？官方推荐使用开源软件Percona Xtrabackup对数据库进行恢复，Percona Xtrabackup目前没有Windows版本，但是我们可以使用Docker进行恢复。
 
 <!-- more -->
+
 ### 准备工作
 
 在阿里云的后台下载备份文件

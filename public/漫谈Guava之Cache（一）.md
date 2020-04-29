@@ -8,14 +8,13 @@ tags:
 categories: Java
 ---
 
+![cache](https://img.yjll.art/img/cache.png)
+
 计算机的世界中，缓存无处不在，最常见的如CPU高速缓存，`CPU Cache`是用于减少[处理器](https://zh.wikipedia.org/wiki/中央处理器)访问内存所需平均时间的部件。在金字塔式[存储体系](https://zh.wikipedia.org/w/index.php?title=存储体系&action=edit&redlink=1)中它位于自顶向下的第二层，仅次于[CPU寄存器](https://zh.wikipedia.org/wiki/寄存器)。其容量远小于[内存](https://zh.wikipedia.org/wiki/内存)，但速度却可以接近处理器的频率。
 
 当处理器发出内存访问请求时，会先查看缓存内是否有请求数据。如果存在（命中），则不经访问内存直接返回该数据；如果不存在（失效），则要先把内存中的相应数据载入缓存，再将其返回处理器。
 
 这和我们日常开发中的很多场景相似，例如调用第三方接口取数据，微服务间取数据，甚至从数据库中取数据。这些IO操作所消耗的时间对于CPU来说是很久的。如果这些数据是读多写少，也就是说数据不会轻易改变，那我们可以把这部分数据进行缓存，取数据前先访问缓存，在缓存中查不到时再走原来的逻辑。
-
-
-![cache](https://img.yjll.art/img/cache.jpg)
 
 <!-- more -->
 

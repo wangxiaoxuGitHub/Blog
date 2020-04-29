@@ -1,0 +1,11 @@
+
+
+
+### 置顶
+
+    npm uninstall hexo-generator-index --save
+
+    npm install hexo-generator-index-pin-top --save
+
+top: true
+
