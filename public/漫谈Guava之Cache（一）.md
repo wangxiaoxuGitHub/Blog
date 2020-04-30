@@ -8,7 +8,7 @@ tags:
 categories: Java
 ---
 
-![cache](https://img.yjll.art/img/cache.png)
+![cache](https://img.yjll.art/img/cache.jpg)
 
 计算机的世界中，缓存无处不在，最常见的如CPU高速缓存，`CPU Cache`是用于减少[处理器](https://zh.wikipedia.org/wiki/中央处理器)访问内存所需平均时间的部件。在金字塔式[存储体系](https://zh.wikipedia.org/w/index.php?title=存储体系&action=edit&redlink=1)中它位于自顶向下的第二层，仅次于[CPU寄存器](https://zh.wikipedia.org/wiki/寄存器)。其容量远小于[内存](https://zh.wikipedia.org/wiki/内存)，但速度却可以接近处理器的频率。
 
