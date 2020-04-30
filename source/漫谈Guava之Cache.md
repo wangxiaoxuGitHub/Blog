@@ -1,6 +1,6 @@
 ---
 title: 漫谈Guava之Cache（二）
-date: 2020-03-27 17:40:24
+date: 2020-03-28
 tags:
 - Guava
 - Cache
@@ -33,112 +33,33 @@ LocalManualCache(CacheBuilder<? super K, ? super V> builder) {
 }
 ```
 
-LocalManualCache 相当于LocalCache的包装类，大部分方法直接使用LocalCache的实现，部分方法自己实现了一下。我们直接看LocalCache的逻辑
+LocalManualCache 相当于LocalCache的包装类，大部分方法直接使用LocalCache的实现，部分方法自己实现了一下。我们直接看LocalCache的逻辑，LocalCache的实现参考了`ConcurrentHashMap`，采用分段锁技术，当一个线程访问一个 `Segment` 时，不会影响其他的 `Segment`。
 
-
-```java
-LocalCache(
-    CacheBuilder<? super K, ? super V> builder, @Nullable CacheLoader<? super K, V> loader) {
-  concurrencyLevel = Math.min(builder.getConcurrencyLevel(), MAX_SEGMENTS);
-
-  keyStrength = builder.getKeyStrength();
-  valueStrength = builder.getValueStrength();
-
-  keyEquivalence = builder.getKeyEquivalence();
-  valueEquivalence = builder.getValueEquivalence();
-
-  maxWeight = builder.getMaximumWeight();
-  weigher = builder.getWeigher();
-  expireAfterAccessNanos = builder.getExpireAfterAccessNanos();
-  expireAfterWriteNanos = builder.getExpireAfterWriteNanos();
-  refreshNanos = builder.getRefreshNanos();
-
-  removalListener = builder.getRemovalListener();
-  removalNotificationQueue =
-      (removalListener == NullListener.INSTANCE)
-          ? LocalCache.<RemovalNotification<K, V>>discardingQueue()
-          : new ConcurrentLinkedQueue<RemovalNotification<K, V>>();
-
-  ticker = builder.getTicker(recordsTime());
-  entryFactory = EntryFactory.getFactory(keyStrength, usesAccessEntries(), usesWriteEntries());
-  globalStatsCounter = builder.getStatsCounterSupplier().get();
-  defaultLoader = loader;
-
-  int initialCapacity = Math.min(builder.getInitialCapacity(), MAXIMUM_CAPACITY);
-  if (evictsBySize() && !customWeigher()) {
-    initialCapacity = (int) Math.min(initialCapacity, maxWeight);
+``` java
+  Segment<K, V> segmentFor(int hash) {
+    return segments[(hash >>> segmentShift) & segmentMask];
   }
+``` 
 
-  // Find the lowest power-of-two segmentCount that exceeds concurrencyLevel, unless
-  // maximumSize/Weight is specified in which case ensure that each segment gets at least 10
-  // entries. The special casing for size-based eviction is only necessary because that eviction
-  // happens per segment instead of globally, so too many segments compared to the maximum size
-  // will result in random eviction behavior.
-  int segmentShift = 0;
-  int segmentCount = 1;
-  while (segmentCount < concurrencyLevel && (!evictsBySize() || segmentCount * 20 <= maxWeight)) {
-    ++segmentShift;
-    segmentCount <<= 1;
-  }
-  this.segmentShift = 32 - segmentShift;
-  segmentMask = segmentCount - 1;
 
-  this.segments = newSegmentArray(segmentCount);
+Segment中维护了5个队列
 
-  int segmentCapacity = initialCapacity / segmentCount;
-  if (segmentCapacity * segmentCount < initialCapacity) {
-    ++segmentCapacity;
-  }
-
-  int segmentSize = 1;
-  while (segmentSize < segmentCapacity) {
-    segmentSize <<= 1;
-  }
-
-  if (evictsBySize()) {
-    // Ensure sum of segment max weights = overall max weights
-    long maxSegmentWeight = maxWeight / segmentCount + 1;
-    long remainder = maxWeight % segmentCount;
-    for (int i = 0; i < this.segments.length; ++i) {
-      if (i == remainder) {
-        maxSegmentWeight--;
-      }
-      this.segments[i] =
-          createSegment(segmentSize, maxSegmentWeight, builder.getStatsCounterSupplier().get());
-    }
-  } else {
-    for (int i = 0; i < this.segments.length; ++i) {
-      this.segments[i] =
-          createSegment(segmentSize, UNSET_INT, builder.getStatsCounterSupplier().get());
-    }
-  }
-}
-```
-
+* keyReferenceQueue 
+* valueReferenceQueue 
+* recencyQueue 
+* writeQueue 
+* accessQueue 
 
 ### 存放元素
 
-`put`方法往cache中存放元素
-
-```java
-public V put(K key, V value) {
-  checkNotNull(key);
-  checkNotNull(value);
-  int hash = hash(key);
-  return segmentFor(hash).put(key, hash, value, false);
-}
-```
-
-`segmentFor(hash)`根据hash及位运算，获取该key所在的Segment，这块的实现方式其实和 `ConcurrentHashMap `类似，采用分段锁技术，当一个线程访问一个 `Segment` 时，不会影响其他的 `Segment`。
-
-其实真正的逻辑都是在`Segment`这个类的内部完成。
+加锁，判断加入的元素在缓存中是否存在
 
 ```java
 V put(K key, int hash, V value, boolean onlyIfAbsent) {
   lock();
   try {
     long now = map.ticker.read();
-    // 清理过期数据(非强引用)
+    // 清理过期数据和被GC回收的数据
     preWriteCleanup(now);
 	
     int newCount = this.count + 1;
@@ -163,9 +84,12 @@ V put(K key, int hash, V value, boolean onlyIfAbsent) {
         ValueReference<K, V> valueReference = e.getValueReference();
         V entryValue = valueReference.get();
 
+        // 表示触发GC，值被回收了
         if (entryValue == null) {
           ++modCount;
+          // 排除CacheLoad加载的数据
           if (valueReference.isActive()) {
+            // 移入删除队列中
             enqueueNotification(
                 key, hash, entryValue, valueReference.getWeight(), RemovalCause.COLLECTED);
             setValue(e, key, value, now);
@@ -175,6 +99,7 @@ V put(K key, int hash, V value, boolean onlyIfAbsent) {
             newCount = this.count + 1;
           }
           this.count = newCount; // write-volatile
+          // 移除原来元素
           evictEntries(e);
           return null;
         } else if (onlyIfAbsent) {
@@ -196,7 +121,7 @@ V put(K key, int hash, V value, boolean onlyIfAbsent) {
     }
 
     // Create a new entry.
-    // 当前key对应的ReferenceEntry不存在时创建一个，并把当前value和时间放入新建的ReferenceEntry中
+    // 缓存中没有，创建一个
     ++modCount;
     ReferenceEntry<K, V> newEntry = newEntry(key, hash, first);
     // 包装key，value放到newEntry中，并调用recordWrite()方法，更新权重,将entry存入accessQueue，writeQueue队列中
