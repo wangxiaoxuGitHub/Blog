@@ -89,11 +89,8 @@ certbot renew
 也就是说在证书过期前要运行一下上边的命令，并且重新加载nginx的配置文件，这部分我们可以配置在定时任务中。
 
 ```
-45 4 1 * * certbot renew --force-renew --renew-hook "nginx -s reload"
+certbot renew --force-renew --renew-hook "nginx -s reload"
 ```
-
-每一个月第一天，重新申请证书
-
 
 ### 参考资料
 
